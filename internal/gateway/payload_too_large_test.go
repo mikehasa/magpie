@@ -25,12 +25,15 @@ func TestPayloadTooLargeIsNotContextOverflow(t *testing.T) {
 			t.Errorf("byte limit classified as token limit: %s", msg)
 		}
 		p := provider.Provider{ID: "fake", Name: "Fake", Contexts: map[string]int{"m": 100}}
-		// Image bytes don't make a text estimate pass the token margin.
+		// Image bytes don't make a text estimate pass the token margin: a
+		// picture is imageTokens, not the hundreds of thousands of tokens
+		// its base64 would come to, so a window over it sees the text fit.
+		roomy := provider.Provider{ID: "fake", Name: "Fake", Contexts: map[string]int{"m": 2000}}
 		tokens := estimate(&Request{Messages: []Message{{Role: "user", Parts: []Part{
 			{Kind: Text, Text: strings.Repeat("word", 100)},
 			{Kind: Image, Data: strings.Repeat(pngA, 4096)},
 		}}}})
-		if inferred, ok := tooLongUnsaid(p, "m", tokens, 413, []byte(msg)); ok {
+		if inferred, ok := tooLongUnsaid(roomy, "m", tokens, 413, []byte(msg)); ok {
 			t.Errorf("byte limit inferred as token limit: %s", inferred)
 		}
 		if inferred, ok := tooLongUnsaid(p, "m", 1000, 413, []byte(msg)); !ok || !strings.Contains(inferred, "prompt is too long") {
